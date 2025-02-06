@@ -2,6 +2,8 @@
 
 A command-line tool that generates comprehensive summaries of git repository activity.
 
+![Git Summary Tool Screenshot](screenshot.png)
+
 ## Features
 
 - Filter commits by email address(es) or email pattern
