@@ -175,6 +175,23 @@ def distribute_changes(commit, files_by_module, module_stats):
         module_stats[module]['added'] += sum(f['added'] for f in files)
         module_stats[module]['deleted'] += sum(f['deleted'] for f in files)
 
+def calculate_frequency_stats(commits, total_days):
+    """Calculate commit frequency statistics and return most relevant period"""
+    if not commits or total_days == 0:
+        return None, None
+        
+    commits_per_day = len(commits) / total_days
+    commits_per_week = commits_per_day * 7
+    commits_per_month = commits_per_day * 30.44  # Average days in a month
+    
+    # Find most relevant period
+    if commits_per_day >= 1:
+        return 'day', round(commits_per_day, 1)
+    elif commits_per_week >= 1:
+        return 'week', round(commits_per_week, 1)
+    else:
+        return 'month', round(commits_per_month, 1)
+
 def format_module_stats(module_stats):
     """Convert module stats dict to sorted list by impact"""
     module_list = [
@@ -229,6 +246,20 @@ def generate_summary(emails=None, email_contains=None, days=None, weeks=None, mo
     else:
         print(f"{Colors.BLUE}Commits by:{Colors.RESET} current user")
     print(f"\n{Colors.BLUE}Total commits:{Colors.RESET}", len(parsed_commits))
+    
+    # Calculate commit frequency
+    if days:
+        total_days = days
+    elif weeks:
+        total_days = weeks * 7
+    elif years:
+        total_days = years * 365
+    else:
+        total_days = (max(c['date'] for c in parsed_commits) - min(c['date'] for c in parsed_commits)).days + 1
+    
+    period, frequency = calculate_frequency_stats(parsed_commits, total_days)
+    if period and frequency:
+        print(f"{Colors.BLUE}Commit frequency:{Colors.RESET} {frequency} per {period}")
     
     # Calculate total lines changed
     total_added = sum(commit['added'] for commit in parsed_commits)
