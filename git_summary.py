@@ -4,6 +4,15 @@ import datetime
 import argparse
 from collections import defaultdict
 
+# ANSI color codes
+class Colors:
+    BLUE = '\033[94m'
+    CYAN = '\033[96m'
+    GREEN = '\033[92m'
+    YELLOW = '\033[93m'
+    RED = '\033[91m'
+    RESET = '\033[0m'
+
 def parse_args():
     """Parse command line arguments"""
     parser = argparse.ArgumentParser(description='Generate a summary of git commits')
@@ -213,28 +222,28 @@ def generate_summary(emails=None, email_contains=None, days=None, weeks=None, mo
         categories[category] += 1
 
     # Print summary
-    print("\n=== Git Commit Summary ===\n")
+    print(f"\n{Colors.CYAN}=== Git Commit Summary ==={Colors.RESET}\n")
     
     if emails:
-        print("Commits by:", ", ".join(emails))
+        print(f"{Colors.BLUE}Commits by:{Colors.RESET}", ", ".join(emails))
     else:
-        print("Commits by: current user")
-    print("\nTotal commits:", len(parsed_commits))
+        print(f"{Colors.BLUE}Commits by:{Colors.RESET} current user")
+    print(f"\n{Colors.BLUE}Total commits:{Colors.RESET}", len(parsed_commits))
     
     # Calculate total lines changed
     total_added = sum(commit['added'] for commit in parsed_commits)
     total_deleted = sum(commit['deleted'] for commit in parsed_commits)
-    print(f"Lines changed: +{total_added} -{total_deleted}")
+    print(f"{Colors.BLUE}Lines changed:{Colors.RESET} {Colors.GREEN}+{total_added}{Colors.RESET} {Colors.RED}-{total_deleted}{Colors.RESET}")
     
-    print("\nCommits by category:")
+    print(f"\n{Colors.BLUE}Commits by category:{Colors.RESET}")
     for category, count in sorted(categories.items()):
         category_commits = [c for c in parsed_commits if categorize_commit(c['subject']) == category]
         category_added = sum(c['added'] for c in category_commits)
         category_deleted = sum(c['deleted'] for c in category_commits)
-        print(f"    {category}: {count} commits (+{category_added} -{category_deleted})")
+        print(f"    {Colors.YELLOW}{category}:{Colors.RESET} {count} commits ({Colors.GREEN}+{category_added}{Colors.RESET} {Colors.RED}-{category_deleted}{Colors.RESET})")
 
     # Show commits with most changes
-    print("\nHeavy changes (top 5):")
+    print(f"\n{Colors.BLUE}Heavy changes (top 5):{Colors.RESET}")
     heavy_commits = sorted(
         parsed_commits,
         key=lambda x: x['added'] + x['deleted'],
@@ -242,20 +251,20 @@ def generate_summary(emails=None, email_contains=None, days=None, weeks=None, mo
     )[:5]
     for commit in heavy_commits:
         total_changes = commit['added'] + commit['deleted']
-        print(f"    {commit['hash'][:7]} {commit['subject']} ({total_changes} lines: +{commit['added']} -{commit['deleted']})")
+        print(f"    {Colors.YELLOW}{commit['hash'][:7]}{Colors.RESET} {commit['subject']} ({total_changes} lines: {Colors.GREEN}+{commit['added']}{Colors.RESET} {Colors.RED}-{commit['deleted']}{Colors.RESET})")
 
-    print("\nRecent activity:")
+    print(f"\n{Colors.BLUE}Recent activity:{Colors.RESET}")
     for date in sorted(commits_by_date.keys(), reverse=True)[:5]:
-        print(f"    {date}:")
+        print(f"    {Colors.CYAN}{date}:{Colors.RESET}")
         for commit in commits_by_date[date]:
-            print(f"        {commit['hash'][:7]} {commit['subject']} (+{commit['added']} -{commit['deleted']})")
+            print(f"        {Colors.YELLOW}{commit['hash'][:7]}{Colors.RESET} {commit['subject']} ({Colors.GREEN}+{commit['added']}{Colors.RESET} {Colors.RED}-{commit['deleted']}{Colors.RESET})")
 
     # Show module impact (top 5)
     modules = analyze_modules(parsed_commits, module_level)
     if modules:
-        print(f"\nModule impact (top 10, level {module_level}):")
+        print(f"\n{Colors.BLUE}Module impact (top 10, level {module_level}):{Colors.RESET}")
         for module in modules[:10]:
-            print(f"    {module['name']}: {module['files']} files changed +{module['added']} -{module['deleted']} (total impact: {module['total_impact']})")
+            print(f"    {Colors.YELLOW}{module['name']}:{Colors.RESET} {module['files']} files changed {Colors.GREEN}+{module['added']}{Colors.RESET} {Colors.RED}-{module['deleted']}{Colors.RESET} (total impact: {module['total_impact']})")
 
 if __name__ == '__main__':
     args = parse_args()
