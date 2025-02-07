@@ -131,16 +131,8 @@ def get_user_commits(
     output = result.stdout.strip()
 
     if output:
-        # Extract author emails only from the commits we're processing
-        commits = parse_commit_output(output)
-        for commit_lines in output.split("\n"):
-            if "<sep>" in commit_lines:
-                # Get author email for this commit
-                hash_id = commit_lines.split("<sep>")[0]
-                email_cmd = ["git", "log", "-1", "--format=%ae", hash_id]
-                email_result = subprocess.run(email_cmd, capture_output=True, text=True)
-                active_emails.add(email_result.stdout.strip())
-
+        commits, emails = parse_commit_output(output)
+        active_emails.update(emails)
         all_commits.extend(commits)
 
     if not all_commits:
@@ -150,9 +142,10 @@ def get_user_commits(
 
 
 def parse_commit_output(output):
-    """Parse the git log output into commit objects"""
+    """Parse the git log output into commit objects and collect active emails"""
     commits = []
     current_commit = None
+    active_emails = set()
 
     for line in output.split("\n"):
         if "<sep>" in line:  # This is a commit header
@@ -166,6 +159,10 @@ def parse_commit_output(output):
                 "date": date,
                 "files": [],
             }
+            # Get author email for this commit
+            email_cmd = ["git", "log", "-1", "--format=%ae", hash_id]
+            email_result = subprocess.run(email_cmd, capture_output=True, text=True)
+            active_emails.add(email_result.stdout.strip())
         elif line.strip():  # This is a stat line
             try:
                 added, deleted, filename = line.split("\t")
@@ -179,7 +176,7 @@ def parse_commit_output(output):
     if current_commit:
         commits.append(current_commit)
 
-    return commits
+    return commits, active_emails
 
 
 def parse_commit(commit):
