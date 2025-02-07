@@ -71,8 +71,13 @@ def get_emails_by_pattern(pattern):
 
 
 def get_user_commits(
-    emails=None, days=None, weeks=None, months=None, years=None, with_files=False,
-    diverged_from=None
+    emails=None,
+    days=None,
+    weeks=None,
+    months=None,
+    years=None,
+    with_files=False,
+    diverged_from=None,
 ):
     """Get all commits by specified emails or current user within time period"""
     # Track which emails actually have commits
@@ -118,13 +123,14 @@ def get_user_commits(
                 email_cmd = ["git", "log", "-1", "--format=%ae", hash_id]
                 email_result = subprocess.run(email_cmd, capture_output=True, text=True)
                 active_emails.add(email_result.stdout.strip())
-        
+
         all_commits.extend(commits)
 
     if not all_commits:
         return [], set()
 
     return all_commits, active_emails
+
 
 def parse_commit_output(output):
     """Parse the git log output into commit objects"""
@@ -197,7 +203,7 @@ def categorize_commit(subject):
 def get_directory_path(file_path, level=1):
     """Extract directory path up to specified level"""
     parts = file_path.split("/")
-    
+
     if len(parts) > level:
         return "/".join(parts[:level])
     return "/".join(parts)
@@ -281,8 +287,7 @@ def generate_summary(
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
     commits, active_emails = get_user_commits(
-        emails, days, weeks, months, years, with_files=True,
-        diverged_from=diverged_from
+        emails, days, weeks, months, years, with_files=True, diverged_from=diverged_from
     )
     if not commits or (len(commits) == 1 and not commits[0]):
         print("No commits found")
@@ -367,9 +372,7 @@ def generate_summary(
     # Show directory impact (top 10)
     directories = analyze_directories(parsed_commits, dir_level)
     if directories:
-        print(
-            f"\n{Colors.BLUE}Files impact (top 10, level {dir_level}):{Colors.RESET}"
-        )
+        print(f"\n{Colors.BLUE}Files impact (top 10, level {dir_level}):{Colors.RESET}")
         for directory in directories[:10]:
             print(
                 f"    {Colors.YELLOW}{directory['name']}:{Colors.RESET} {directory['files']} files changed {Colors.GREEN}+{directory['added']}{Colors.RESET} {Colors.RED}-{directory['deleted']}{Colors.RESET} (total impact: {directory['total_impact']})"
