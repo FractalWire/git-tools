@@ -38,13 +38,20 @@ Basic usage:
   - `--weeks`, `-w`: Show commits from last N weeks
   - `--months`, `-m`: Show commits from last N months
   - `--years`, `-y`: Show commits from last N years
-- `--module-level`, `-ml`: Directory level to consider as modules (default: 1)
+- `--dir-level`, `-dl`: Directory level for impact analysis (default: 1)
+Branch option:
+- `--diverged-from`, `-df`: Only consider commits that diverged from specified branch
 
 ### Examples
 
-Show your commits from the last 30 days:
+Show all commits from the last 30 days:
 ```bash
 ./git_summary.py --days 30
+```
+
+Show only your commits from the last 30 days:
+```bash
+./git_summary.py --days 30 --emails $(git config user.email)
 ```
 
 Show commits from specific email addresses:
