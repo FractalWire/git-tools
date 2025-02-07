@@ -43,13 +43,13 @@ def parse_args():
         "--years", "-y", type=int, help="Show commits from last N years"
     )
 
-    # Module level option
+    # Directory level option
     parser.add_argument(
-        "--module-level",
-        "-ml",
+        "--dir-level",
+        "-dl",
         type=int,
         default=1,
-        help="Directory level to consider as modules (default: 1)",
+        help="Directory depth level for impact analysis (default: 1)",
     )
 
     return parser.parse_args()
@@ -73,31 +73,42 @@ def get_user_commits(
         email_result = subprocess.run(email_cmd, capture_output=True, text=True)
         emails = [email_result.stdout.strip()]
 
-    # Build the author pattern for multiple emails
-    author_args = [("--author", email) for email in emails]
-    authors = [item for args in author_args for item in args]
+    # Track which emails actually have commits
+    active_emails = set()
 
-    # Build time period argument
-    time_arg = []
-    if days:
-        time_arg = ["--since", f"{days} days ago"]
-    elif weeks:
-        time_arg = ["--since", f"{weeks} weeks ago"]
-    elif months:
-        time_arg = ["--since", f"{months} months ago"]
-    elif years:
-        time_arg = ["--since", f"{years} years ago"]
+    all_commits = []
+    # Query commits for each email separately to track which ones are active
+    for email in emails:
+        author_args = ["--author", email]
 
-    # Get commit info
-    format_str = "--pretty=format:%H<sep>%s<sep>%ad" + ("<sep>%b" if with_files else "")
-    cmd = ["git", "log", format_str, "--date=short", "--numstat"] + authors + time_arg
-    result = subprocess.run(cmd, capture_output=True, text=True)
-    output = result.stdout.strip()
+        # Build time period argument
+        time_arg = []
+        if days:
+            time_arg = ["--since", f"{days} days ago"]
+        elif weeks:
+            time_arg = ["--since", f"{weeks} weeks ago"]
+        elif months:
+            time_arg = ["--since", f"{months} months ago"]
+        elif years:
+            time_arg = ["--since", f"{years} years ago"]
 
-    if not output:
-        return []
+        # Get commit info
+        format_str = "--pretty=format:%H<sep>%s<sep>%ad" + ("<sep>%b" if with_files else "")
+        cmd = ["git", "log", format_str, "--date=short", "--numstat"] + author_args + time_arg
+        result = subprocess.run(cmd, capture_output=True, text=True)
+        output = result.stdout.strip()
 
-    # Parse the output which now includes numstat information
+        if output:
+            active_emails.add(email)
+            all_commits.extend(parse_commit_output(output))
+
+    if not all_commits:
+        return [], set()
+
+    return all_commits, active_emails
+
+def parse_commit_output(output):
+    """Parse the git log output into commit objects"""
     commits = []
     current_commit = None
 
@@ -164,44 +175,33 @@ def categorize_commit(subject):
     return "Other"
 
 
-def get_module_name(file_path, level=1):
-    """Extract module name from file path under apps/"""
-    if file_path.startswith("apps/"):
-        parts = file_path.split("/")
-        if len(parts) > level + 1:
-            module_parts = parts[1:level + 1]
-        elif len(parts) > 1:
-            # If we've reached max level, use the full remaining path
-            module_parts = parts[1:]
-        else:
-            return None
-
-        # Remove .py extension if present
-        if module_parts[-1].endswith(".py"):
-            module_parts[-1] = module_parts[-1][:-3]
-
-        return ".".join(module_parts)
-    return None
+def get_directory_path(file_path, level=1):
+    """Extract directory path up to specified level"""
+    parts = file_path.split("/")
+    
+    if len(parts) > level:
+        return "/".join(parts[:level])
+    return "/".join(parts)
 
 
-def group_files_by_module(commit, module_level):
-    """Group files in a commit by their module"""
-    files_by_module = defaultdict(list)
+def group_files_by_directory(commit, dir_level):
+    """Group files in a commit by their directory"""
+    files_by_dir = defaultdict(list)
 
     for file in commit.get("files", []):
-        module = get_module_name(file["name"], module_level)
-        if module:
-            files_by_module[module].append(file)
+        directory = get_directory_path(file["name"], dir_level)
+        if directory:
+            files_by_dir[directory].append(file)
 
-    return files_by_module
+    return files_by_dir
 
 
-def distribute_changes(commit, files_by_module, module_stats):
-    """Distribute commit changes by module"""
-    for module, files in files_by_module.items():
-        module_stats[module]["files"].update(f["name"] for f in files)
-        module_stats[module]["added"] += sum(f["added"] for f in files)
-        module_stats[module]["deleted"] += sum(f["deleted"] for f in files)
+def distribute_changes(commit, files_by_dir, dir_stats):
+    """Distribute commit changes by directory"""
+    for directory, files in files_by_dir.items():
+        dir_stats[directory]["files"].update(f["name"] for f in files)
+        dir_stats[directory]["added"] += sum(f["added"] for f in files)
+        dir_stats[directory]["deleted"] += sum(f["deleted"] for f in files)
 
 
 def calculate_frequency_stats(commits, total_days):
@@ -222,31 +222,31 @@ def calculate_frequency_stats(commits, total_days):
         return "month", round(commits_per_month, 1)
 
 
-def format_module_stats(module_stats):
-    """Convert module stats dict to sorted list by impact"""
-    module_list = [
+def format_directory_stats(dir_stats):
+    """Convert directory stats dict to sorted list by impact"""
+    dir_list = [
         {
-            "name": module,
+            "name": directory,
             "files": len(stats["files"]),
             "added": stats["added"],
             "deleted": stats["deleted"],
             "total_impact": stats["added"] + stats["deleted"],
         }
-        for module, stats in module_stats.items()
+        for directory, stats in dir_stats.items()
     ]
 
-    return sorted(module_list, key=lambda x: x["total_impact"], reverse=True)
+    return sorted(dir_list, key=lambda x: x["total_impact"], reverse=True)
 
 
-def analyze_modules(commits, module_level=1):
-    """Analyze impact on modules under apps/"""
-    module_stats = defaultdict(lambda: {"files": set(), "added": 0, "deleted": 0})
+def analyze_directories(commits, dir_level=1):
+    """Analyze impact on directories"""
+    dir_stats = defaultdict(lambda: {"files": set(), "added": 0, "deleted": 0})
 
     for commit in commits:
-        files_by_module = group_files_by_module(commit, module_level)
-        distribute_changes(commit, files_by_module, module_stats)
+        files_by_dir = group_files_by_directory(commit, dir_level)
+        distribute_changes(commit, files_by_dir, dir_stats)
 
-    return format_module_stats(module_stats)
+    return format_directory_stats(dir_stats)
 
 
 def generate_summary(
@@ -256,11 +256,11 @@ def generate_summary(
     weeks=None,
     months=None,
     years=None,
-    module_level=1,
+    dir_level=1,
 ):
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
-    commits = get_user_commits(emails, days, weeks, months, years, with_files=True)
+    commits, active_emails = get_user_commits(emails, days, weeks, months, years, with_files=True)
     if not commits or (len(commits) == 1 and not commits[0]):
         print("No commits found")
         return
@@ -281,10 +281,10 @@ def generate_summary(
     # Print summary
     print(f"\n{Colors.CYAN}=== Git Commit Summary ==={Colors.RESET}\n")
 
-    if emails:
-        print(f"{Colors.BLUE}Commits by:{Colors.RESET}", ", ".join(emails))
+    if active_emails:
+        print(f"{Colors.BLUE}Commits by:{Colors.RESET}", ", ".join(active_emails))
     else:
-        print(f"{Colors.BLUE}Commits by:{Colors.RESET} current user")
+        print(f"{Colors.BLUE}Commits by:{Colors.RESET} no active users found")
     print(f"\n{Colors.BLUE}Total commits:{Colors.RESET}", len(parsed_commits))
 
     # Calculate commit frequency
@@ -341,15 +341,15 @@ def generate_summary(
                 f"        {Colors.YELLOW}{commit['hash'][:7]}{Colors.RESET} {commit['subject']} ({Colors.GREEN}+{commit['added']}{Colors.RESET} {Colors.RED}-{commit['deleted']}{Colors.RESET})"
             )
 
-    # Show module impact (top 5)
-    modules = analyze_modules(parsed_commits, module_level)
-    if modules:
+    # Show directory impact (top 10)
+    directories = analyze_directories(parsed_commits, dir_level)
+    if directories:
         print(
-            f"\n{Colors.BLUE}Module impact (top 10, level {module_level}):{Colors.RESET}"
+            f"\n{Colors.BLUE}Files impact (top 10, level {dir_level}):{Colors.RESET}"
         )
-        for module in modules[:10]:
+        for directory in directories[:10]:
             print(
-                f"    {Colors.YELLOW}{module['name']}:{Colors.RESET} {module['files']} files changed {Colors.GREEN}+{module['added']}{Colors.RESET} {Colors.RED}-{module['deleted']}{Colors.RESET} (total impact: {module['total_impact']})"
+                f"    {Colors.YELLOW}{directory['name']}:{Colors.RESET} {directory['files']} files changed {Colors.GREEN}+{directory['added']}{Colors.RESET} {Colors.RED}-{directory['deleted']}{Colors.RESET} (total impact: {directory['total_impact']})"
             )
 
 
@@ -362,5 +362,5 @@ if __name__ == "__main__":
         args.weeks,
         args.months,
         args.years,
-        args.module_level,
+        args.dir_level,
     )
