@@ -8,9 +8,10 @@ A command-line tool that generates comprehensive summaries of git repository act
 
 - Filter commits by email address(es) or email pattern
 - Analyze commits within specific time periods (days, weeks, months, years)
+- Calculate commit frequency statistics (per day/week/month)
 - Categorize commits (Features, Fixes, Improvements, etc.)
 - Show heavy changes and recent activity
-- Analyze impact on modules/directories
+- Analyze impact on directories with configurable depth levels
 - Colorized output for better readability
 
 ## Installation
@@ -64,11 +65,12 @@ Analyze modules at directory level 2:
 ## Output
 
 The tool provides:
-- Total commit count and lines changed
-- Commits categorized by type (Features, Fixes, etc.)
+- Total commit count and commit frequency
+- Total lines changed (additions/deletions)
+- Commits categorized by type (Features, Fixes, etc.) with impact stats
 - Top 5 commits with most changes
 - Recent activity (last 5 dates with commits)
-- Module impact analysis (if applicable)
+- Files impact analysis showing file counts and line changes
 
 ## Requirements
 
