@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+import sys
 import subprocess
 import datetime
 import argparse
@@ -78,6 +79,27 @@ def parse_args():
 
     return parser.parse_args()
 
+def progressbar(it, prefix='', size=60, out=sys.stdout):
+    """Given an iterable `it`, display a progress bar as `it` is consumed"""
+    count = len(it)
+
+    def show(j):
+        x = int(size * j / count)
+        print(
+            f"{prefix}{'█'*x}{('.'*(size-x))} {j}/{count}",
+            end='\r',
+            flush=True,
+        )
+
+    show(0)
+    for i, item in enumerate(it):
+        yield item
+        show(i + 1)
+    print(
+        f"{(' '*(size+len(prefix)+len(str(count))*2+2))}",
+        end='\r',
+        flush=True,
+    )
 
 def get_emails_by_pattern(pattern):
     """Get all email addresses from git log that contain the given pattern"""
@@ -147,7 +169,7 @@ def parse_commit_output(output):
     current_commit = None
     active_emails = set()
 
-    for line in output.split("\n"):
+    for line in progressbar(output.split("\n")):
         if "<sep>" in line:  # This is a commit header
             if current_commit:
                 commits.append(current_commit)
