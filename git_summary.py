@@ -52,6 +52,13 @@ def parse_args():
         help="Directory depth level for impact analysis (default: 1)",
     )
 
+    # Branch comparison option
+    parser.add_argument(
+        "--diverged-from",
+        "-df",
+        help="Only consider commits that diverged from specified branch",
+    )
+
     return parser.parse_args()
 
 
@@ -64,43 +71,55 @@ def get_emails_by_pattern(pattern):
 
 
 def get_user_commits(
-    emails=None, days=None, weeks=None, months=None, years=None, with_files=False
+    emails=None, days=None, weeks=None, months=None, years=None, with_files=False,
+    diverged_from=None
 ):
     """Get all commits by specified emails or current user within time period"""
-    if not emails:
-        # Get current user's email if none specified
-        email_cmd = ["git", "config", "user.email"]
-        email_result = subprocess.run(email_cmd, capture_output=True, text=True)
-        emails = [email_result.stdout.strip()]
-
     # Track which emails actually have commits
     active_emails = set()
-
     all_commits = []
-    # Query commits for each email separately to track which ones are active
-    for email in emails:
-        author_args = ["--author", email]
 
-        # Build time period argument
-        time_arg = []
-        if days:
-            time_arg = ["--since", f"{days} days ago"]
-        elif weeks:
-            time_arg = ["--since", f"{weeks} weeks ago"]
-        elif months:
-            time_arg = ["--since", f"{months} months ago"]
-        elif years:
-            time_arg = ["--since", f"{years} years ago"]
+    # Build time period argument
+    time_arg = []
+    if days:
+        time_arg = ["--since", f"{days} days ago"]
+    elif weeks:
+        time_arg = ["--since", f"{weeks} weeks ago"]
+    elif months:
+        time_arg = ["--since", f"{months} months ago"]
+    elif years:
+        time_arg = ["--since", f"{years} years ago"]
 
-        # Get commit info
-        format_str = "--pretty=format:%H<sep>%s<sep>%ad" + ("<sep>%b" if with_files else "")
-        cmd = ["git", "log", format_str, "--date=short", "--numstat"] + author_args + time_arg
-        result = subprocess.run(cmd, capture_output=True, text=True)
-        output = result.stdout.strip()
+    # If no specific emails, get all commits
+    if not emails:
+        author_args = []
+    else:
+        # Query commits for each specified email separately
+        author_args = ["--author", emails[0]]
+        for email in emails[1:]:
+            author_args.extend(["--author", email])
 
-        if output:
-            active_emails.add(email)
-            all_commits.extend(parse_commit_output(output))
+    # Get commit info
+    format_str = "--pretty=format:%H<sep>%s<sep>%ad" + ("<sep>%b" if with_files else "")
+    cmd = ["git", "log", format_str, "--date=short", "--numstat"]
+    if diverged_from:
+        cmd.extend([f"{diverged_from}..HEAD"])
+    cmd.extend(author_args + time_arg)
+    result = subprocess.run(cmd, capture_output=True, text=True)
+    output = result.stdout.strip()
+
+    if output:
+        # Extract author emails only from the commits we're processing
+        commits = parse_commit_output(output)
+        for commit_lines in output.split("\n"):
+            if "<sep>" in commit_lines:
+                # Get author email for this commit
+                hash_id = commit_lines.split("<sep>")[0]
+                email_cmd = ["git", "log", "-1", "--format=%ae", hash_id]
+                email_result = subprocess.run(email_cmd, capture_output=True, text=True)
+                active_emails.add(email_result.stdout.strip())
+        
+        all_commits.extend(commits)
 
     if not all_commits:
         return [], set()
@@ -257,10 +276,14 @@ def generate_summary(
     months=None,
     years=None,
     dir_level=1,
+    diverged_from=None,
 ):
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
-    commits, active_emails = get_user_commits(emails, days, weeks, months, years, with_files=True)
+    commits, active_emails = get_user_commits(
+        emails, days, weeks, months, years, with_files=True,
+        diverged_from=diverged_from
+    )
     if not commits or (len(commits) == 1 and not commits[0]):
         print("No commits found")
         return
@@ -363,4 +386,5 @@ if __name__ == "__main__":
         args.months,
         args.years,
         args.dir_level,
+        args.diverged_from,
     )
