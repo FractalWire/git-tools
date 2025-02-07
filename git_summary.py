@@ -59,6 +59,23 @@ def parse_args():
         help="Only consider commits that diverged from specified branch",
     )
 
+    # Salary option
+    parser.add_argument(
+        "--salary",
+        "-s",
+        type=float,
+        default=50000,
+        help="Average yearly salary in EUR for cost estimation (default: 50000)",
+    )
+
+    # Pure COCOMO option
+    parser.add_argument(
+        "--pure-cocomo",
+        "-p",
+        action="store_true",
+        help="Use pure COCOMO calculation without line weighting",
+    )
+
     return parser.parse_args()
 
 
@@ -229,6 +246,36 @@ def distribute_changes(commit, files_by_dir, dir_stats):
         dir_stats[directory]["deleted"] += sum(f["deleted"] for f in files)
 
 
+def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure_cocomo=False):
+    """Calculate COCOMO metrics for the codebase size"""
+    # Using the organic model coefficients
+    a, b = 2.4, 1.05
+    if pure_cocomo:
+        total_lines = max(0, added_lines - deleted_lines)
+    else:
+        total_lines = max(0, added_lines - deleted_lines) * 0.8 + deleted_lines * 0.2
+    kloc = total_lines / 1000
+    
+    # Calculate effort in person-months
+    effort = a * (kloc ** b)
+    
+    # Calculate development time in months
+    time = 2.5 * (effort ** 0.38)
+    
+    # Calculate average staff size
+    staff = effort / time
+    
+    # Calculate cost based on yearly salary
+    monthly_salary = yearly_salary / 12
+    cost = effort * monthly_salary
+    
+    return {
+        'effort': round(effort, 1),
+        'time': round(time, 1),
+        'staff': round(staff, 1),
+        'cost': round(cost)
+    }
+
 def calculate_frequency_stats(commits, total_days):
     """Calculate commit frequency statistics and return most relevant period"""
     if not commits or total_days == 0:
@@ -283,6 +330,8 @@ def generate_summary(
     years=None,
     dir_level=1,
     diverged_from=None,
+    yearly_salary=50000,
+    pure_cocomo=False,
 ):
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
@@ -339,6 +388,14 @@ def generate_summary(
         f"{Colors.BLUE}Lines changed:{Colors.RESET} {Colors.GREEN}+{total_added}{Colors.RESET} {Colors.RED}-{total_deleted}{Colors.RESET}"
     )
 
+    # Calculate and display COCOMO metrics
+    cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo)
+    print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
+    print(f"    Effort: {cocomo['effort']} person-months")
+    print(f"    Development time: {cocomo['time']} months")
+    print(f"    Average staff needed: {cocomo['staff']} people")
+    print(f"    Estimated cost: €{cocomo['cost']:,}")
+
     print(f"\n{Colors.BLUE}Commits by category:{Colors.RESET}")
     for category, count in sorted(categories.items()):
         category_commits = [
@@ -390,4 +447,6 @@ if __name__ == "__main__":
         args.years,
         args.dir_level,
         args.diverged_from,
+        args.salary,
+        args.pure_cocomo,
     )

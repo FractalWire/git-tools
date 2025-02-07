@@ -41,6 +41,8 @@ Basic usage:
 - `--dir-level`, `-dl`: Directory level for impact analysis (default: 1)
 Branch option:
 - `--diverged-from`, `-df`: Only consider commits that diverged from specified branch
+- `--salary`, `-s`: Average yearly salary in USD for cost estimation (default: 50000)
+- `--pure-cocomo`, `-p`: Use pure COCOMO calculation without line weighting
 
 ### Examples
 
@@ -73,7 +75,7 @@ Analyze modules at directory level 2:
 
 The tool provides:
 - Total commit count and commit frequency
-- Total lines changed (additions/deletions)
+- Total lines changed (additions/deletions) with COCOMO estimates
 - Commits categorized by type (Features, Fixes, etc.) with impact stats
 - Top 5 commits with most changes
 - Recent activity (last 5 dates with commits)
