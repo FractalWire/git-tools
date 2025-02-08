@@ -319,12 +319,11 @@ def format_directory_stats(dir_stats):
             "files": len(stats["files"]),
             "added": stats["added"],
             "deleted": stats["deleted"],
-            "total_impact": stats["added"] + stats["deleted"],
         }
         for directory, stats in dir_stats.items()
     ]
 
-    return sorted(dir_list, key=lambda x: x["total_impact"], reverse=True)
+    return sorted(dir_list, key=lambda x: x["added"] + x["deleted"], reverse=True)
 
 
 def analyze_directories(commits, dir_level=1):
@@ -409,6 +408,8 @@ def generate_summary(
     # Calculate and display COCOMO metrics
     cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
     print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
+    # Add this line to show total lines considered:
+    print(f"    Lines considered: {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}")
     print(f"    Effort: {cocomo['effort']} person-months")
     print(f"    Development time: {cocomo['time']} months")
     print(f"    Average staff needed: {cocomo['staff']} people")
@@ -450,7 +451,7 @@ def generate_summary(
         print(f"\n{Colors.BLUE}Files impact (top 10, level {dir_level}):{Colors.RESET}")
         for directory in directories[:10]:
             print(
-                f"    {Colors.YELLOW}{directory['name']}:{Colors.RESET} {directory['files']} files changed {Colors.GREEN}+{directory['added']}{Colors.RESET} {Colors.RED}-{directory['deleted']}{Colors.RESET} (total impact: {directory['total_impact']})"
+                f"    {Colors.YELLOW}{directory['name']}:{Colors.RESET} {directory['files']} files changed {Colors.GREEN}+{directory['added']}{Colors.RESET} {Colors.RED}-{directory['deleted']}{Colors.RESET}"
             )
 
 
