@@ -4,6 +4,22 @@ import subprocess
 import datetime
 import argparse
 from collections import defaultdict
+from typing import List, Dict, Set, Tuple, Optional
+
+# Add at the top of the file
+COCOMO_ORGANIC_A = 2.4
+COCOMO_ORGANIC_B = 1.05
+DAYS_PER_MONTH = 30.44
+DAYS_PER_WEEK = 7
+DAYS_PER_YEAR = 365
+
+COMMIT_CATEGORIES = {
+    "Fixes": ["fix", "bug", "issue"],
+    "Features": ["feat", "add", "new"],
+    "Improvements": ["refactor", "clean", "improve"],
+    "Tests": ["test"],
+    "Documentation": ["doc"]
+}
 
 
 # ANSI color codes
@@ -110,14 +126,14 @@ def get_emails_by_pattern(pattern):
 
 
 def get_user_commits(
-    emails=None,
-    days=None,
-    weeks=None,
-    months=None,
-    years=None,
-    with_files=False,
-    diverged_from=None,
-):
+    emails: Optional[List[str]] = None,
+    days: Optional[int] = None,
+    weeks: Optional[int] = None,
+    months: Optional[int] = None,
+    years: Optional[int] = None,
+    with_files: bool = False,
+    diverged_from: Optional[str] = None,
+) -> Tuple[List[Dict], Set[str]]:
     """Get all commits by specified emails or current user within time period"""
     # Track which emails actually have commits
     active_emails = set()
@@ -138,10 +154,7 @@ def get_user_commits(
     if not emails:
         author_args = []
     else:
-        # Query commits for each specified email separately
-        author_args = ["--author", emails[0]]
-        for email in emails[1:]:
-            author_args.extend(["--author", email])
+        author_args = sum((["-author", email] for email in emails), [])
 
     # Get commit info
     format_str = "--pretty=format:%H<sep>%s<sep>%ad<sep>%ae" + ("<sep>%b" if with_files else "")
@@ -198,9 +211,9 @@ def parse_commit_output(output):
     return commits, active_emails
 
 
-def parse_commit(commit):
+def parse_commit(commit: Dict) -> Optional[Dict]:
     """Parse a commit into structured format"""
-    if not commit or commit.get("subject", "").startswith("Merge branch"):
+    if commit.get("subject", "").startswith("Merge branch"):
         return None
 
     parsed = {
@@ -208,29 +221,20 @@ def parse_commit(commit):
         "subject": commit["subject"],
         "date": datetime.datetime.strptime(commit["date"], "%Y-%m-%d").date(),
         "files": commit.get("files", []),
+        "added": sum(f["added"] for f in commit.get("files", [])),
+        "deleted": sum(f["deleted"] for f in commit.get("files", [])),
     }
 
-    # Add convenience properties for total changes
-    parsed["added"] = sum(f["added"] for f in parsed["files"])
-    parsed["deleted"] = sum(f["deleted"] for f in parsed["files"])
-    parsed["total_impact"] = max(0, parsed["added"] - parsed["deleted"])
-
+    parsed['total_impact'] = max(0, parsed["added"] - parsed["deleted"])
     return parsed
 
 
 def categorize_commit(subject):
     """Basic categorization of commits based on common prefixes"""
     subject = subject.lower()
-    if any(word in subject for word in ["fix", "bug", "issue"]):
-        return "Fixes"
-    if any(word in subject for word in ["feat", "add", "new"]):
-        return "Features"
-    if any(word in subject for word in ["refactor", "clean", "improve"]):
-        return "Improvements"
-    if any(word in subject for word in ["test"]):
-        return "Tests"
-    if any(word in subject for word in ["doc"]):
-        return "Documentation"
+    for category, keywords in COMMIT_CATEGORIES.items():
+        if any(word in subject for word in keywords):
+            return category
     return "Other"
 
 
@@ -299,13 +303,13 @@ def calculate_frequency_stats(commits, total_days):
         return None, None
 
     commits_per_day = len(commits) / total_days
-    commits_per_week = commits_per_day * 7
-    commits_per_month = commits_per_day * 30.44  # Average days in a month
+    commits_per_week = commits_per_day * DAYS_PER_WEEK
+    commits_per_month = commits_per_day * DAYS_PER_MONTH
 
-    # Find most relevant period
-    if commits_per_day >= 1:
+    # Use clearer thresholds
+    if commits_per_day >= 0.9:  # Almost 1 per day
         return "day", round(commits_per_day, 1)
-    elif commits_per_week >= 1:
+    elif commits_per_week >= 0.9:  # Almost 1 per week
         return "week", round(commits_per_week, 1)
     else:
         return "month", round(commits_per_month, 1)
