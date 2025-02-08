@@ -144,7 +144,7 @@ def get_user_commits(
             author_args.extend(["--author", email])
 
     # Get commit info
-    format_str = "--pretty=format:%H<sep>%s<sep>%ad" + ("<sep>%b" if with_files else "")
+    format_str = "--pretty=format:%H<sep>%s<sep>%ad<sep>%ae" + ("<sep>%b" if with_files else "")
     cmd = ["git", "log", format_str, "--date=short", "--numstat"]
     if diverged_from:
         cmd.extend([f"{diverged_from}..HEAD"])
@@ -169,22 +169,19 @@ def parse_commit_output(output):
     current_commit = None
     active_emails = set()
 
-    for line in progressbar(output.split("\n")):
+    for line in progressbar(output.split("\n"), prefix=" Parsing commits: "):
         if "<sep>" in line:  # This is a commit header
             if current_commit:
                 commits.append(current_commit)
             parts = line.split("<sep>")
-            hash_id, subject, date = parts[:3]
+            hash_id, subject, date, email = parts[:4]
             current_commit = {
                 "hash": hash_id,
                 "subject": subject,
                 "date": date,
                 "files": [],
             }
-            # Get author email for this commit
-            email_cmd = ["git", "log", "-1", "--format=%ae", hash_id]
-            email_result = subprocess.run(email_cmd, capture_output=True, text=True)
-            active_emails.add(email_result.stdout.strip())
+            active_emails.add(email)
         elif line.strip():  # This is a stat line
             try:
                 added, deleted, filename = line.split("\t")
