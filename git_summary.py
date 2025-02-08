@@ -213,6 +213,7 @@ def parse_commit(commit):
     # Add convenience properties for total changes
     parsed["added"] = sum(f["added"] for f in parsed["files"])
     parsed["deleted"] = sum(f["deleted"] for f in parsed["files"])
+    parsed["total_impact"] = max(0, parsed["added"] - parsed["deleted"])
 
     return parsed
 
@@ -262,29 +263,29 @@ def distribute_changes(commit, files_by_dir, dir_stats):
         dir_stats[directory]["deleted"] += sum(f["deleted"] for f in files)
 
 
-def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure_cocomo=False):
+def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure_cocomo=False, total_impact=0):
     """Calculate COCOMO metrics for the codebase size"""
     # Using the organic model coefficients
     a, b = 2.4, 1.05
     if pure_cocomo:
         total_lines = max(0, added_lines - deleted_lines)
     else:
-        total_lines = max(0, added_lines - deleted_lines) * 0.8 + deleted_lines * 0.2
+        total_lines = total_impact
     kloc = total_lines / 1000
-    
+
     # Calculate effort in person-months
     effort = a * (kloc ** b)
-    
+
     # Calculate development time in months
     time = 2.5 * (effort ** 0.38)
-    
+
     # Calculate average staff size
     staff = effort / time
-    
+
     # Calculate cost based on yearly salary
     monthly_salary = yearly_salary / 12
     cost = effort * monthly_salary
-    
+
     return {
         'effort': round(effort, 1),
         'time': round(time, 1),
@@ -400,12 +401,13 @@ def generate_summary(
     # Calculate total lines changed
     total_added = sum(commit["added"] for commit in parsed_commits)
     total_deleted = sum(commit["deleted"] for commit in parsed_commits)
+    total_impact = sum(commit["total_impact"] for commit in parsed_commits)
     print(
         f"{Colors.BLUE}Lines changed:{Colors.RESET} {Colors.GREEN}+{total_added}{Colors.RESET} {Colors.RED}-{total_deleted}{Colors.RESET}"
     )
 
     # Calculate and display COCOMO metrics
-    cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo)
+    cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
     print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
     print(f"    Effort: {cocomo['effort']} person-months")
     print(f"    Development time: {cocomo['time']} months")
