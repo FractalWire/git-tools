@@ -154,7 +154,9 @@ def get_user_commits(
     if not emails:
         author_args = []
     else:
-        author_args = sum((["-author", email] for email in emails), [])
+        # Fix: Use --author= format and handle multiple emails with OR operator
+        author_str = "\\|".join(emails)  # Use OR operator in git --author
+        author_args = [f"--author={author_str}"]
 
     # Get commit info
     format_str = "--pretty=format:%H<sep>%s<sep>%ad<sep>%ae" + ("<sep>%b" if with_files else "")
