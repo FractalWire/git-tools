@@ -88,6 +88,19 @@ The tool provides:
 - Python 3.6+
 - Git repository
 
+## COCOMO Disclaimer
+
+The COCOMO metrics provided by this tool should be interpreted with caution:
+
+- The Basic COCOMO model used here is a simplified version from 1981 and may not accurately reflect modern development practices
+- The model assumes a waterfall-style development process rather than agile/iterative approaches
+- Estimates are based purely on lines of code, which is an imperfect measure of project complexity
+- The tool provides two COCOMO calculation modes:
+  - Pure mode: Only considers net added lines (additions minus deletions)
+  - Iterative mode: Considers the impact of each commit's changes
+- Results should be used as rough indicators rather than precise estimates
+- Actual project costs and timelines depend on many factors not captured by COCOMO
+
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
