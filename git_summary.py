@@ -91,14 +91,14 @@ def parse_args():
         "--pure-cocomo",
         "-p",
         action="store_true",
-        help="Use pure COCOMO calculation without line weighting",
+        help="Use pure COCOMO calculation (considers only net added lines)",
     )
     
     cocomo_group.add_argument(
         "--iterative-cocomo",
         "-ic",
         action="store_true",
-        help="Display COCOMO metrics for iterative development",
+        help="Display iterative COCOMO metrics (each commit added net lines contribute to total line count)",
     )
 
     return parser.parse_args()

@@ -12,6 +12,7 @@ A command-line tool that generates comprehensive summaries of git repository act
 - Categorize commits (Features, Fixes, Improvements, etc.)
 - Show heavy changes and recent activity
 - Analyze impact on directories with configurable depth levels
+- Display COCOMO calculation and estimated development cost of the considered commits
 - Colorized output for better readability
 
 ## Installation
@@ -41,8 +42,9 @@ Basic usage:
 - `--dir-level`, `-dl`: Directory level for impact analysis (default: 1)
 Branch option:
 - `--diverged-from`, `-df`: Only consider commits that diverged from specified branch
-- `--salary`, `-s`: Average yearly salary in USD for cost estimation (default: 50000)
-- `--pure-cocomo`, `-p`: Use pure COCOMO calculation without line weighting
+- `--salary`, `-s`: Average yearly salary in EUR for COCOMO cost estimation (default: 50000)
+- `--pure-cocomo`, `-p`: Use pure COCOMO calculation (considers only net added lines)
+- `--iterative-cocomo`, `-ic`: Display iterative COCOMO metrics (each commit added net lines contribute to total line count)
 
 ### Examples
 
@@ -68,7 +70,7 @@ Show commits from the last 2 weeks for emails containing "company.com":
 
 Analyze modules at directory level 2:
 ```bash
-./git_summary.py --module-level 2
+./git_summary.py --dir-level 2
 ```
 
 ## Output
