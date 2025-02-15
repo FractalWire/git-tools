@@ -85,12 +85,20 @@ def parse_args():
         help="Average yearly salary in EUR for cost estimation (default: 50000)",
     )
 
-    # Pure COCOMO option
-    parser.add_argument(
+    # COCOMO options
+    cocomo_group = parser.add_mutually_exclusive_group()
+    cocomo_group.add_argument(
         "--pure-cocomo",
         "-p",
         action="store_true",
         help="Use pure COCOMO calculation without line weighting",
+    )
+    
+    cocomo_group.add_argument(
+        "--iterative-cocomo",
+        "-ic",
+        action="store_true",
+        help="Display COCOMO metrics for iterative development",
     )
 
     return parser.parse_args()
@@ -277,6 +285,14 @@ def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure
         total_lines = max(0, added_lines - deleted_lines)
     else:
         total_lines = total_impact
+
+    if not total_lines:
+        return {
+            'effort': 0,
+            'time': 0,
+            'staff': 0,
+            'cost': 0,
+        }
     kloc = total_lines / 1000
 
     # Calculate effort in person-months
@@ -354,6 +370,7 @@ def generate_summary(
     diverged_from=None,
     yearly_salary=50000,
     pure_cocomo=False,
+    iterative_cocomo=False,
 ):
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
@@ -411,16 +428,6 @@ def generate_summary(
         f"{Colors.BLUE}Lines changed:{Colors.RESET} {Colors.GREEN}+{total_added}{Colors.RESET} {Colors.RED}-{total_deleted}{Colors.RESET}"
     )
 
-    # Calculate and display COCOMO metrics
-    cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
-    print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
-    # Add this line to show total lines considered:
-    print(f"    Lines considered: {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}")
-    print(f"    Effort: {cocomo['effort']} person-months")
-    print(f"    Development time: {cocomo['time']} months")
-    print(f"    Average staff needed: {cocomo['staff']} people")
-    print(f"    Estimated cost: €{cocomo['cost']:,}")
-
     print(f"\n{Colors.BLUE}Commits by category:{Colors.RESET}")
     for category, count in sorted(categories.items()):
         category_commits = [
@@ -431,6 +438,16 @@ def generate_summary(
         print(
             f"    {Colors.YELLOW}{category}:{Colors.RESET} {count} commits ({Colors.GREEN}+{category_added}{Colors.RESET} {Colors.RED}-{category_deleted}{Colors.RESET})"
         )
+
+    # Calculate and display COCOMO metrics if requested
+    if pure_cocomo or iterative_cocomo:
+        cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
+        print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
+        print(f"    {Colors.YELLOW}Lines considered:{Colors.RESET} {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}")
+        print(f"    {Colors.YELLOW}Effort:{Colors.RESET} {cocomo['effort']} person-months")
+        print(f"    {Colors.YELLOW}Development time:{Colors.RESET} {cocomo['time']} months")
+        print(f"    {Colors.YELLOW}Average staff needed:{Colors.RESET} {cocomo['staff']} people")
+        print(f"    {Colors.YELLOW}Estimated cost:{Colors.RESET} €{cocomo['cost']:,}")
 
     # Show commits with most changes
     print(f"\n{Colors.BLUE}Heavy changes (top 5):{Colors.RESET}")
@@ -474,4 +491,5 @@ if __name__ == "__main__":
         args.diverged_from,
         args.salary,
         args.pure_cocomo,
+        args.iterative_cocomo,
     )
