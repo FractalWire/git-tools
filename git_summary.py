@@ -18,7 +18,7 @@ COMMIT_CATEGORIES = {
     "Features": ["feat", "add", "new"],
     "Improvements": ["refactor", "clean", "improve"],
     "Tests": ["test"],
-    "Documentation": ["doc"]
+    "Documentation": ["doc"],
 }
 
 
@@ -93,7 +93,7 @@ def parse_args():
         action="store_true",
         help="Use pure COCOMO calculation (considers only net added lines)",
     )
-    
+
     cocomo_group.add_argument(
         "--incremental-cocomo",
         "-ic",
@@ -103,7 +103,8 @@ def parse_args():
 
     return parser.parse_args()
 
-def progressbar(it, prefix='', size=60, out=sys.stdout):
+
+def progressbar(it, prefix="", size=60, out=sys.stdout):
     """Given an iterable `it`, display a progress bar as `it` is consumed"""
     count = len(it)
 
@@ -111,7 +112,7 @@ def progressbar(it, prefix='', size=60, out=sys.stdout):
         x = int(size * j / count)
         print(
             f"{prefix}{'█'*x}{('.'*(size-x))} {j}/{count}",
-            end='\r',
+            end="\r",
             flush=True,
         )
 
@@ -121,9 +122,10 @@ def progressbar(it, prefix='', size=60, out=sys.stdout):
         show(i + 1)
     print(
         f"{(' '*(size+len(prefix)+len(str(count))*2+2))}",
-        end='\r',
+        end="\r",
         flush=True,
     )
+
 
 def get_emails_by_pattern(pattern):
     """Get all email addresses from git log that contain the given pattern"""
@@ -167,7 +169,9 @@ def get_user_commits(
         author_args = [f"--author={author_str}"]
 
     # Get commit info
-    format_str = "--pretty=format:%H<sep>%s<sep>%ad<sep>%ae" + ("<sep>%b" if with_files else "")
+    format_str = "--pretty=format:%H<sep>%s<sep>%ad<sep>%ae" + (
+        "<sep>%b" if with_files else ""
+    )
     cmd = ["git", "log", format_str, "--date=short", "--numstat"]
     if diverged_from:
         cmd.extend([f"{diverged_from}..HEAD"])
@@ -235,7 +239,7 @@ def parse_commit(commit: Dict) -> Optional[Dict]:
         "deleted": sum(f["deleted"] for f in commit.get("files", [])),
     }
 
-    parsed['total_impact'] = max(0, parsed["added"] - parsed["deleted"])
+    parsed["total_impact"] = max(0, parsed["added"] - parsed["deleted"])
     return parsed
 
 
@@ -277,7 +281,9 @@ def distribute_changes(commit, files_by_dir, dir_stats):
         dir_stats[directory]["deleted"] += sum(f["deleted"] for f in files)
 
 
-def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure_cocomo=False, total_impact=0):
+def calculate_cocomo_stats(
+    added_lines, deleted_lines, yearly_salary=50000, pure_cocomo=False, total_impact=0
+):
     """Calculate COCOMO metrics for the codebase size"""
     # Using the organic model coefficients
     a, b = 2.4, 1.05
@@ -288,18 +294,18 @@ def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure
 
     if not total_lines:
         return {
-            'effort': 0,
-            'time': 0,
-            'staff': 0,
-            'cost': 0,
+            "effort": 0,
+            "time": 0,
+            "staff": 0,
+            "cost": 0,
         }
     kloc = total_lines / 1000
 
     # Calculate effort in person-months
-    effort = a * (kloc ** b)
+    effort = a * (kloc**b)
 
     # Calculate development time in months
-    time = 2.5 * (effort ** 0.38)
+    time = 2.5 * (effort**0.38)
 
     # Calculate average staff size
     staff = effort / time
@@ -309,11 +315,12 @@ def calculate_cocomo_stats(added_lines, deleted_lines, yearly_salary=50000, pure
     cost = effort * monthly_salary
 
     return {
-        'effort': round(effort, 1),
-        'time': round(time, 1),
-        'staff': round(staff, 1),
-        'cost': round(cost)
+        "effort": round(effort, 1),
+        "time": round(time, 1),
+        "staff": round(staff, 1),
+        "cost": round(cost),
     }
+
 
 def calculate_frequency_stats(commits, total_days):
     """Calculate commit frequency statistics and return most relevant period"""
@@ -441,12 +448,22 @@ def generate_summary(
 
     # Calculate and display COCOMO metrics if requested
     if pure_cocomo or incremental_cocomo:
-        cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
+        cocomo = calculate_cocomo_stats(
+            total_added, total_deleted, yearly_salary, pure_cocomo, total_impact
+        )
         print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
-        print(f"    {Colors.YELLOW}Lines considered:{Colors.RESET} {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}")
-        print(f"    {Colors.YELLOW}Effort:{Colors.RESET} {cocomo['effort']} person-months")
-        print(f"    {Colors.YELLOW}Development time:{Colors.RESET} {cocomo['time']} months")
-        print(f"    {Colors.YELLOW}Average staff needed:{Colors.RESET} {cocomo['staff']} people")
+        print(
+            f"    {Colors.YELLOW}Lines considered:{Colors.RESET} {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}"
+        )
+        print(
+            f"    {Colors.YELLOW}Effort:{Colors.RESET} {cocomo['effort']} person-months"
+        )
+        print(
+            f"    {Colors.YELLOW}Development time:{Colors.RESET} {cocomo['time']} months"
+        )
+        print(
+            f"    {Colors.YELLOW}Average staff needed:{Colors.RESET} {cocomo['staff']} people"
+        )
         print(f"    {Colors.YELLOW}Estimated cost:{Colors.RESET} €{cocomo['cost']:,}")
 
     # Show commits with most changes
