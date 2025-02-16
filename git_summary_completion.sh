@@ -7,7 +7,7 @@ _git_summary() {
     prev="${COMP_WORDS[COMP_CWORD-1]}"
 
     # All available options
-    opts="--emails -e --email-contains -ec --days -d --weeks -w --months -m --years -y --dir-level -dl --diverged-from -df --salary -s --pure-cocomo -p --iterative-cocomo -ic"
+    opts="--emails -e --email-contains -ec --days -d --weeks -w --months -m --years -y --dir-level -dl --diverged-from -df --salary -s --pure-cocomo -p --incremental-cocomo -ic"
 
     # Handle option arguments
     case "${prev}" in

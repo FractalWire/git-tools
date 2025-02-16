@@ -95,10 +95,10 @@ def parse_args():
     )
     
     cocomo_group.add_argument(
-        "--iterative-cocomo",
+        "--incremental-cocomo",
         "-ic",
         action="store_true",
-        help="Display iterative COCOMO metrics (each commit added net lines contribute to total line count)",
+        help="Display incremental COCOMO metrics (each commit added net lines contribute to total line count)",
     )
 
     return parser.parse_args()
@@ -370,7 +370,7 @@ def generate_summary(
     diverged_from=None,
     yearly_salary=50000,
     pure_cocomo=False,
-    iterative_cocomo=False,
+    incremental_cocomo=False,
 ):
     if email_contains:
         emails = get_emails_by_pattern(email_contains)
@@ -440,7 +440,7 @@ def generate_summary(
         )
 
     # Calculate and display COCOMO metrics if requested
-    if pure_cocomo or iterative_cocomo:
+    if pure_cocomo or incremental_cocomo:
         cocomo = calculate_cocomo_stats(total_added, total_deleted, yearly_salary, pure_cocomo, total_impact)
         print(f"\n{Colors.BLUE}COCOMO Estimates (Basic, Organic):{Colors.RESET}")
         print(f"    {Colors.YELLOW}Lines considered:{Colors.RESET} {total_impact if not pure_cocomo else max(0, total_added - total_deleted):,}")
@@ -491,5 +491,5 @@ if __name__ == "__main__":
         args.diverged_from,
         args.salary,
         args.pure_cocomo,
-        args.iterative_cocomo,
+        args.incremental_cocomo,
     )

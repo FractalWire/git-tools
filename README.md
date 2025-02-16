@@ -68,7 +68,7 @@ Branch option:
 - `--diverged-from`, `-df`: Only consider commits that diverged from specified branch
 - `--salary`, `-s`: Average yearly salary in EUR for COCOMO cost estimation (default: 50000)
 - `--pure-cocomo`, `-p`: Use pure COCOMO calculation (considers only net added lines)
-- `--iterative-cocomo`, `-ic`: Display iterative COCOMO metrics (each commit added net lines contribute to total line count)
+- `--incremental-cocomo`, `-ic`: Display incremental COCOMO metrics (each commit added net lines contribute to total line count)
 
 ### Examples
 
@@ -121,7 +121,7 @@ The COCOMO metrics provided by this tool should be interpreted with caution:
 - Estimates are based purely on lines of code, which is an imperfect measure of project complexity
 - The tool provides two COCOMO calculation modes:
   - Pure mode: Only considers net added lines (additions minus deletions)
-  - Iterative mode: Considers the impact of each commit's changes
+  - Incremental mode: Considers the impact of each commit's changes
 - Results should be used as rough indicators rather than precise estimates
 - Actual project costs and timelines depend on many factors not captured by COCOMO
 
