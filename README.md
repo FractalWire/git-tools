@@ -23,7 +23,7 @@ A command-line tool that generates comprehensive summaries of git repository act
 chmod +x git_summary.py
 ```
 
-## Git Subcommand Setup
+### Git Subcommand Setup
 
 To use as a git subcommand (`git summary`):
 
@@ -36,7 +36,7 @@ This allows you to use either:
 - `./git_summary.py [options]`
 - `git summary [options]`
 
-## Shell Completion
+### Shell Completion
 
 To enable command-line completion:
 
@@ -106,11 +106,6 @@ The tool provides:
 - Top 5 commits with most changes
 - Recent activity (last 5 dates with commits)
 - Files impact analysis showing file counts and line changes
-
-## Requirements
-
-- Python 3.6+
-- Git repository
 
 ## COCOMO Disclaimer
 
