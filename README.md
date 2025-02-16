@@ -23,6 +23,30 @@ A command-line tool that generates comprehensive summaries of git repository act
 chmod +x git_summary.py
 ```
 
+## Git Subcommand Setup
+
+To use as a git subcommand (`git summary`):
+
+```bash
+# Create a symlink in your PATH
+sudo ln -s "$(pwd)/git_summary.py" /usr/local/bin/git-summary
+```
+
+This allows you to use either:
+- `./git_summary.py [options]`
+- `git summary [options]`
+
+## Shell Completion
+
+To enable command-line completion:
+
+```bash
+# Install completion script for current user
+mkdir -p ~/.local/share/bash-completion/completions
+install -m 644 git_summary_completion.sh ~/.local/share/bash-completion/completions/git-summary
+source ~/.local/share/bash-completion/completions/git-summary
+```
+
 ## Usage
 
 Basic usage:
